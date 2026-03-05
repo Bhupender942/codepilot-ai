@@ -14,12 +14,15 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "codellama:7b"
     embedding_model: str = "all-MiniLM-L6-v2"
+    model_cache_dir: str = "/tmp/codepilot_models/all-MiniLM-L6-v2"
     sandbox_timeout: int = 120
     sandbox_memory_limit: str = "512m"
     sandbox_cpu_limit: float = 1.0
     cache_ttl_seconds: int = 3600
     cache_max_size: int = 1000
     secrets_scan_enabled: bool = True
+    cors_origins: str = "*"
+    port: int = 8000
 
 
 @lru_cache(maxsize=1)

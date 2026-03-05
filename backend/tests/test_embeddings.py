@@ -17,19 +17,35 @@ from app.services.embeddings import embed_chunks, embed_query
 
 
 def _make_mock_model(dims: int = 384):
-    """Return a MagicMock that behaves like a SentenceTransformer model."""
-    model = MagicMock()
+    """Return a (mock_session, mock_tokenizer) pair for the ONNX model."""
+    mock_session = MagicMock()
+    mock_tokenizer = MagicMock()
 
-    def _encode(texts, show_progress_bar=False, **kwargs):
-        return np.array([[0.1] * dims for _ in texts], dtype="float32")
+    def _run(output_names, feed):
+        batch_size = feed["input_ids"].shape[0]
+        seq_len = feed["input_ids"].shape[1]
+        last_hidden_state = np.full((batch_size, seq_len, dims), 0.1, dtype=np.float32)
+        return [last_hidden_state]
 
-    model.encode.side_effect = _encode
-    return model
+    mock_session.run.side_effect = _run
+
+    def _encode_batch(texts):
+        encodings = []
+        for _ in texts:
+            enc = MagicMock()
+            enc.ids = [1] * 128
+            enc.attention_mask = [1] * 128
+            encodings.append(enc)
+        return encodings
+
+    mock_tokenizer.encode_batch.side_effect = _encode_batch
+    return (mock_session, mock_tokenizer)
 
 
 def _reset_model_singleton():
     """Clear the cached model singleton between tests."""
-    embeddings_module._model = None
+    embeddings_module._session = None
+    embeddings_module._tokenizer = None
 
 
 # ---------------------------------------------------------------------------
@@ -42,9 +58,8 @@ def test_embed_query_returns_vector():
     _reset_model_singleton()
     mock_model = _make_mock_model(384)
 
-    with patch.object(embeddings_module, "_model", mock_model):
-        with patch("app.services.embeddings.get_model", return_value=mock_model):
-            result = embed_query("how does authentication work?")
+    with patch("app.services.embeddings.get_model", return_value=mock_model):
+        result = embed_query("how does authentication work?")
 
     assert isinstance(result, list)
     assert all(isinstance(v, float) for v in result)
@@ -62,12 +77,10 @@ def test_embed_query_zero_vector_when_no_model():
 
 
 def test_embed_query_handles_model_exception():
-    """embed_query falls back to zero vector if model.encode raises."""
+    """embed_query falls back to zero vector if encoding raises."""
     _reset_model_singleton()
-    mock_model = MagicMock()
-    mock_model.encode.side_effect = RuntimeError("CUDA OOM")
 
-    with patch("app.services.embeddings.get_model", return_value=mock_model):
+    with patch("app.services.embeddings._encode_texts", side_effect=RuntimeError("ONNX error")):
         result = embed_query("problematic query")
 
     assert result == [0.0] * 384
@@ -135,13 +148,11 @@ def test_embed_chunks_zero_vectors_when_no_model():
 
 
 def test_embed_chunks_handles_model_exception():
-    """embed_chunks falls back to zero vectors if model.encode raises."""
+    """embed_chunks falls back to zero vectors if encoding raises."""
     _reset_model_singleton()
-    mock_model = MagicMock()
-    mock_model.encode.side_effect = RuntimeError("encoding failed")
 
     chunks = [{"id": "c1", "text": "def x(): pass"}]
-    with patch("app.services.embeddings.get_model", return_value=mock_model):
+    with patch("app.services.embeddings._encode_texts", side_effect=RuntimeError("encoding failed")):
         results = embed_chunks(chunks)
 
     assert len(results) == 1
@@ -176,34 +187,26 @@ def test_vector_dimensions(dims: int):
 def test_model_singleton_returns_same_instance():
     """get_model() called twice returns the same cached instance."""
     _reset_model_singleton()
-    mock_model = _make_mock_model()
+    mock_session = MagicMock()
+    mock_tokenizer = MagicMock()
 
-    with patch(
-        "app.services.embeddings.SentenceTransformer",
-        return_value=mock_model,
-        create=True,
-    ):
-        # Patch the whole import chain so the model loads successfully
-        with patch.dict(
-            "sys.modules",
-            {
-                "sentence_transformers": MagicMock(SentenceTransformer=MagicMock(return_value=mock_model)),
-            },
-        ):
-            _reset_model_singleton()
-            first = embeddings_module.get_model()
-            second = embeddings_module.get_model()
+    # Pre-populate the cache to simulate an already-loaded model
+    embeddings_module._session = mock_session
+    embeddings_module._tokenizer = mock_tokenizer
 
-    # If both calls returned the same object, the singleton works.
-    # (Both may be None in a no-model env; that's still a singleton.)
-    assert first is second
+    first = embeddings_module.get_model()
+    second = embeddings_module.get_model()
+
+    assert first == second
 
 
 def test_model_singleton_caches_after_load():
     """After the first successful load, subsequent calls skip re-loading."""
     _reset_model_singleton()
-    mock_model = _make_mock_model()
-    embeddings_module._model = mock_model  # simulate already loaded
+    mock_session = MagicMock()
+    mock_tokenizer = MagicMock()
+    embeddings_module._session = mock_session
+    embeddings_module._tokenizer = mock_tokenizer
 
     result = embeddings_module.get_model()
-    assert result is mock_model  # returned immediately, no re-load
+    assert result == (mock_session, mock_tokenizer)
