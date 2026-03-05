@@ -3,13 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import get_settings
 from app.database import Base, engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create all tables on startup (Alembic handles production migrations;
-    # this is a convenience for local/test environments)
     Base.metadata.create_all(bind=engine)
     yield
 
@@ -21,9 +20,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+settings = get_settings()
+origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +45,6 @@ try:
     app.include_router(sandbox.router, prefix="/api")
     app.include_router(docs.router, prefix="/api")
 except ImportError:
-    # Routers not yet implemented — the core app still starts cleanly
     pass
 
 

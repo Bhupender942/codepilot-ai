@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: codepilot-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: codepilot-db
+          property: connectionURI
+      - key: QDRANT_HOST
+        sync: false
+      - key: QDRANT_PORT
+        value: "6333"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: "anthropic/claude-3.5-sonnet"
+      - key: OLLAMA_BASE_URL
+        value: "http://localhost:11434"
+      - key: OLLAMA_MODEL
+        value: "codellama:7b"
+      - key: EMBEDDING_MODEL
+        value: "all-MiniLM-L6-v2"
+      - key: MODEL_CACHE_DIR
+        value: "/tmp/codepilot_models/all-MiniLM-L6-v2"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PORT
+        value: "8000"
+    healthCheckPath: /health
+
+databases:
+  - name: codepilot-db
+    plan: free
+    databaseName: codepilot
+    user: codepilot
