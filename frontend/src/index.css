@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { @apply bg-slate-900 text-slate-100; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-slate-800; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-600 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-500; }
+}
+
+@layer components {
+  .code-block { @apply relative rounded-lg overflow-hidden text-sm; }
+  .diff-line-add { @apply bg-green-900/40 text-green-300 border-l-2 border-green-500; }
+  .diff-line-remove { @apply bg-red-900/40 text-red-300 border-l-2 border-red-500; }
+  .diff-line-context { @apply text-slate-400; }
+  .diff-hunk-header { @apply bg-blue-900/30 text-blue-400 font-mono text-xs py-1 px-3; }
+  .btn-primary { @apply bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-secondary { @apply bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-danger { @apply bg-red-700 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
+  .card { @apply bg-slate-800 border border-slate-700 rounded-xl p-4; }
+  .input-field { @apply bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full; }
+  .label { @apply text-slate-300 text-sm font-medium mb-1 block; }
+}
