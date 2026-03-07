@@ -5,6 +5,7 @@ import RepoPage from './pages/RepoPage'
 import QueryPage from './pages/QueryPage'
 import DiagnosePage from './pages/DiagnosePage'
 import PatchPage from './pages/PatchPage'
+import DocsPage from './pages/DocsPage'
 
 export default function App() {
   return (
@@ -16,8 +17,10 @@ export default function App() {
         <Route path="/query" element={<QueryPage />} />
         <Route path="/diagnose" element={<DiagnosePage />} />
         <Route path="/patch" element={<PatchPage />} />
+        <Route path="/docs" element={<DocsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
   )
 }
+

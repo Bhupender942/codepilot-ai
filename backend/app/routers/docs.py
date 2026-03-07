@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, get_db
 from app.models import Job
-from app.schemas import DocGenRequest, DocGenResponse
+from app.schemas import DocGenRequest, DocGenResponse, DocGenResultResponse
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,23 @@ def generate_docs(
         _run_doc_generation, job.id, body.repo_id, body.file_path
     )
     return DocGenResponse(job_id=job.id, status=job.status)
+
+
+@router.get("/result/{job_id}", response_model=DocGenResultResponse)
+def get_doc_result(job_id: str, db: Session = Depends(get_db)) -> DocGenResultResponse:
+    """Get the result of a documentation generation job."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    result = job.result or {}
+    return DocGenResultResponse(
+        job_id=job.id,
+        status=job.status,
+        doc_count=result.get("doc_count"),
+        docs=result.get("docs"),
+        error=result.get("error"),
+    )
 
 
 def _run_doc_generation(

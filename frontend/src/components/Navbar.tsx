@@ -5,6 +5,7 @@ const links = [
   { to: '/query', label: 'Query', icon: '🔍' },
   { to: '/diagnose', label: 'Diagnose', icon: '🐛' },
   { to: '/patch', label: 'Patch', icon: '🩹' },
+  { to: '/docs', label: 'Docs', icon: '📚' },
 ]
 
 export default function Navbar() {

@@ -11,15 +11,19 @@ export interface Repo {
   status: string; file_count?: number; chunk_count?: number; created_at?: string;
 }
 export interface IndexJob { job_id: string; status: string; progress?: number; message?: string; }
-export interface Citation { file_path: string; start_line: number; end_line: number; code: string; language: string; score: number; }
+export interface Citation { file_path: string; start_line: number; end_line: number; text: string; score: number; }
 export interface QueryResult { answer: string; citations: Citation[]; cached: boolean; }
 export interface Suspect { file_path: string; start_line: number; end_line: number; probability: number; explanation: string; }
-export interface DiagnoseResult { suspects: Suspect[]; summary: string; }
-export interface PatchResult { patch_id: string; diff: string; explanation: string; unit_test: string; file_path: string; }
-export interface SandboxResult { job_id: string; status: string; stdout: string; stderr: string; exit_code: number; }
+export interface DiagnoseResult { suspects: Suspect[]; }
+export interface Hunk { header: string; lines: string[]; }
+export interface PatchResult { patch_id: string; target_file: string; hunks: Hunk[]; raw_diff: string; explanation: string; unit_test: string; confidence: number; }
+export interface TestResult { name: string; status: string; duration_ms: number; message: string; }
+export interface SandboxResult { job_id: string; status: string; stdout: string; stderr: string; test_results: TestResult[]; confidence: number; }
 export interface ConfidenceEvidence { component: string; score: number; weight: number; details: string; }
 export interface ConfidenceResult { score: number; evidence: ConfidenceEvidence[]; }
-export interface DocsResult { content: string; file_path: string; }
+export interface DocGenJob { job_id: string; status: string; }
+export interface DocEntry { chunk_id: string; file_path: string; start_line: number; end_line: number; docstring: string; example: string; complexity: string; }
+export interface DocGenResult { job_id: string; status: string; doc_count?: number; docs?: DocEntry[]; error?: string; }
 
 export const connectRepo = (data: { name: string; git_url: string; default_branch?: string }) =>
   api.post<Repo>('/repos/connect', data).then(r => r.data)
@@ -37,6 +41,8 @@ export const runSandbox = (data: { patch_id: string; repo_id: string }) =>
   api.post<SandboxResult>('/sandbox/run', data).then(r => r.data)
 export const getSandboxResult = (job_id: string) => api.get<SandboxResult>(`/sandbox/result/${job_id}`).then(r => r.data)
 export const generateDocs = (data: { repo_id: string; file_path?: string }) =>
-  api.post<DocsResult>('/docs/generate', data).then(r => r.data)
+  api.post<DocGenJob>('/docs_gen/generate', data).then(r => r.data)
+export const getDocResult = (job_id: string) =>
+  api.get<DocGenResult>(`/docs_gen/result/${job_id}`).then(r => r.data)
 
 export default api
