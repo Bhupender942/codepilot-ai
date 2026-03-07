@@ -31,10 +31,7 @@ class LLMOrchestrator:
         """
         cache = get_cache()
         mode = self._config.llm_mode.strip().lower()
-        provider_signature = (
-            f"mode={mode}|gemini={self._config.gemini_model}"
-            f"|openrouter={self._config.openrouter_model}|ollama={self._config.ollama_model}"
-        )
+        provider_signature = f"mode={mode}|gemini={self._config.gemini_model}|openrouter={self._config.openrouter_model}|ollama={self._config.ollama_model}"
         cache_key = cache.make_key(repo_id, provider_signature + "|" + system + "|" + prompt)
 
         if use_cache:
@@ -45,10 +42,25 @@ class LLMOrchestrator:
 
         if mode == "gemini_only":
             result = await self._call_gemini(prompt, system)
+        elif mode == "openrouter_only":
+            result = await self._call_openrouter(prompt, system)
         else:
+            # hybrid: Ollama -> OpenRouter -> Gemini (final fallback)
             result = await self._try_ollama(prompt, system)
             if result is None:
-                result = await self._call_openrouter(prompt, system)
+                if self._config.openrouter_api_key:
+                    result = await self._call_openrouter(prompt, system)
+                    if result and result.startswith("Error: LLM unavailable") and self._config.gemini_api_key:
+                        logger.info("OpenRouter failed, falling back to Gemini")
+                        result = await self._call_gemini(prompt, system)
+                elif self._config.gemini_api_key:
+                    logger.info("No OpenRouter key, trying Gemini fallback")
+                    result = await self._call_gemini(prompt, system)
+                else:
+                    result = (
+                        "Error: LLM unavailable - no provider configured. "
+                        "Set GEMINI_API_KEY with LLM_MODE=gemini_only, or OPENROUTER_API_KEY."
+                    )
 
         scanner = get_secrets_scanner()
         result = scanner.redact(result)
@@ -78,20 +90,19 @@ class LLMOrchestrator:
             return None
 
     async def _call_gemini(self, prompt: str, system: str) -> str:
-        """Call Gemini API directly with model fallback on 404."""
+        """Call Gemini API directly. Raises on failure."""
         try:
+            import httpx
+
             if not self._config.gemini_api_key:
                 raise ValueError("GEMINI_API_KEY is not configured")
 
             full_prompt = f"{system}\n\n{prompt}" if system else prompt
-            configured = self._config.gemini_model.strip()
-            candidates = [
-                configured,
-                "gemini-1.5-flash-latest",
-                "gemini-2.0-flash",
-            ]
-            model_candidates = list(dict.fromkeys([m for m in candidates if m]))
-
+            model = self._config.gemini_model
+            url = (
+                "https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model}:generateContent"
+            )
             payload = {
                 "contents": [
                     {
@@ -103,34 +114,18 @@ class LLMOrchestrator:
             }
 
             async with httpx.AsyncClient(timeout=90.0) as client:
-                last_exc: Exception | None = None
-                for model in model_candidates:
-                    url = (
-                        "https://generativelanguage.googleapis.com/v1beta/models/"
-                        f"{model}:generateContent"
-                    )
-                    try:
-                        response = await client.post(
-                            url,
-                            params={"key": self._config.gemini_api_key},
-                            json=payload,
-                        )
-                        response.raise_for_status()
-                        data = response.json()
-                        response_candidates = data.get("candidates", [])
-                        if not response_candidates:
-                            return ""
-                        parts = response_candidates[0].get("content", {}).get("parts", [])
-                        return "".join(part.get("text", "") for part in parts)
-                    except httpx.HTTPStatusError as exc:
-                        last_exc = exc
-                        if exc.response.status_code == 404:
-                            logger.warning("Gemini model not found: %s", model)
-                            continue
-                        raise
-                if last_exc is not None:
-                    raise last_exc
-                raise ValueError("No Gemini model candidates configured")
+                response = await client.post(
+                    url,
+                    params={"key": self._config.gemini_api_key},
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+                candidates = data.get("candidates", [])
+                if not candidates:
+                    return ""
+                parts = candidates[0].get("content", {}).get("parts", [])
+                return "".join(part.get("text", "") for part in parts)
         except Exception as exc:
             logger.error("Gemini call failed: %s", exc)
             return f"Error: LLM unavailable ({exc})"
@@ -159,8 +154,8 @@ class LLMOrchestrator:
             headers = {
                 "Authorization": f"Bearer {self._config.openrouter_api_key}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "https://codepilot.local",
-                "X-Title": "CodePilot",
+                "HTTP-Referer": "https://codepilot.app",   # required by OpenRouter
+                "X-Title": "CodePilot",                    # required by OpenRouter
             }
 
             async with httpx.AsyncClient(timeout=90.0) as client:
