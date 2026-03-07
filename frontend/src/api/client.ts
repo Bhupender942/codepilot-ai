@@ -31,8 +31,10 @@ api.interceptors.response.use(
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (error.response) {
-      const detail = error.response.data?.detail || error.response.data?.message
+      const data = error.response.data
+      const detail = data?.detail || data?.message
       if (detail) return String(detail)
+      if (typeof data === 'string' && data.trim()) return data.slice(0, 200)
       return `Server error (${error.response.status})`
     } else if (error.request) {
       return 'Network error — the backend server is unreachable. If you are using a hosted frontend, verify that the backend CORS configuration includes this domain.'

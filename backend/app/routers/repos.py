@@ -88,6 +88,16 @@ def connect_repo(body: RepoConnect, db: Session = Depends(get_db)) -> RepoRespon
     )
     db.add(repo)
     try:
+        existing = db.query(Repo).filter(Repo.git_url == body.git_url).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Repository already registered")
+
+        repo = Repo(
+            name=body.name,
+            git_url=body.git_url,
+            default_branch=body.default_branch,
+        )
+        db.add(repo)
         db.commit()
         db.refresh(repo)
     except SQLAlchemyError as exc:
@@ -135,9 +145,14 @@ def delete_repo(repo_id: str, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="Repository not found")
 
     try:
+        repo = db.query(Repo).filter(Repo.id == repo_id).first()
+        if not repo:
+            raise HTTPException(status_code=404, detail="Repository not found")
+
         # Cascade delete handles files/chunks via relationship config.
         # Also remove any vector store data.
         from app.services.vector_store import get_vector_store
+
         try:
             get_vector_store().delete_repo(repo_id)
         except Exception as exc:
@@ -154,7 +169,5 @@ def delete_repo(repo_id: str, db: Session = Depends(get_db)) -> dict:
         ) from exc
     except Exception as exc:
         db.rollback()
-        logger.error("Failed to delete repo %s: %s", repo_id, exc)
-        raise HTTPException(status_code=500, detail="Failed to delete repository") from exc
-
-    return {"deleted": repo_id}
+        logger.exception("Repository delete failed for %s", repo_id)
+        raise _database_unavailable() from exc
