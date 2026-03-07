@@ -29,7 +29,9 @@ class LLMOrchestrator:
         Applies secrets redaction before returning.
         """
         cache = get_cache()
-        cache_key = cache.make_key(repo_id, (system + "|" + prompt))
+        mode = self._config.llm_mode.strip().lower()
+        provider_signature = f"mode={mode}|gemini={self._config.gemini_model}|openrouter={self._config.openrouter_model}|ollama={self._config.ollama_model}"
+        cache_key = cache.make_key(repo_id, provider_signature + "|" + system + "|" + prompt)
 
         if use_cache:
             cached = cache.get(cache_key)
@@ -47,7 +49,7 @@ class LLMOrchestrator:
         scanner = get_secrets_scanner()
         result = scanner.redact(result)
 
-        if use_cache:
+        if use_cache and not result.startswith("Error: LLM unavailable"):
             cache.set(cache_key, result)
 
         return result
