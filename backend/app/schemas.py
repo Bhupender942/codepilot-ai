@@ -157,3 +157,21 @@ class DocGenRequest(BaseModel):
 class DocGenResponse(BaseModel):
     job_id: str
     status: str
+
+
+class DocEntry(BaseModel):
+    chunk_id: str
+    file_path: str
+    start_line: int
+    end_line: int
+    docstring: str
+    example: str
+    complexity: str
+
+
+class DocGenResultResponse(BaseModel):
+    job_id: str
+    status: str
+    doc_count: Optional[int] = None
+    docs: Optional[list[DocEntry]] = None
+    error: Optional[str] = None
