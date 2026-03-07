@@ -145,6 +145,8 @@ class LLMOrchestrator:
             headers = {
                 "Authorization": f"Bearer {self._config.openrouter_api_key}",
                 "Content-Type": "application/json",
+                "HTTP-Referer": "https://codepilot.app",   # required by OpenRouter
+                "X-Title": "CodePilot",                    # required by OpenRouter
             }
             payload = {
                 "model": self._config.openrouter_model,
