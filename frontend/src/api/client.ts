@@ -11,7 +11,6 @@ const baseURL = import.meta.env.DEV
 const api = axios.create({
   baseURL,
   timeout: 120000,
-@@ -14,68 +14,77 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -64,7 +63,6 @@ export interface DocGenResult { job_id: string; status: string; doc_count?: numb
 
 export const connectRepo = (data: { name: string; git_url: string; default_branch?: string }) =>
   api.post<Repo>('/repos/connect', data).then(r => r.data)
-export const listRepos = () => api.get<Repo[]>('/repos').then(r => r.data)
 export const listRepos = () =>
   api.get<unknown>('/repos').then(r => {
     if (!Array.isArray(r.data)) {
