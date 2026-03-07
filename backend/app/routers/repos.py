@@ -1,15 +1,70 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Repo
+from app.models import Chunk, File, Repo
 from app.schemas import RepoConnect, RepoResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/repos", tags=["repos"])
+
+
+def _repo_response(repo: Repo, db: Session) -> RepoResponse:
+    """Build a RepoResponse enriched with file_count and chunk_count."""
+    file_count: int = (
+        db.query(func.count(File.id))
+        .filter(File.repo_id == repo.id)
+        .scalar() or 0
+    )
+    chunk_count: int = (
+        db.query(func.count(Chunk.id))
+        .join(File, Chunk.file_id == File.id)
+        .filter(File.repo_id == repo.id)
+        .scalar() or 0
+    )
+    data = RepoResponse.model_validate(repo)
+    data.file_count = file_count
+    data.chunk_count = chunk_count
+    return data
+
+
+def _build_repo_responses(repos: list[Repo], db: Session) -> list[RepoResponse]:
+    """Build RepoResponse list with file/chunk counts using batch queries."""
+    if not repos:
+        return []
+
+    repo_ids = [r.id for r in repos]
+
+    # Single query for all file counts
+    file_counts_rows = (
+        db.query(File.repo_id, func.count(File.id).label("cnt"))
+        .filter(File.repo_id.in_(repo_ids))
+        .group_by(File.repo_id)
+        .all()
+    )
+    file_counts: dict[str, int] = {row.repo_id: row.cnt for row in file_counts_rows}
+
+    # Single query for all chunk counts
+    chunk_counts_rows = (
+        db.query(File.repo_id, func.count(Chunk.id).label("cnt"))
+        .join(Chunk, Chunk.file_id == File.id)
+        .filter(File.repo_id.in_(repo_ids))
+        .group_by(File.repo_id)
+        .all()
+    )
+    chunk_counts: dict[str, int] = {row.repo_id: row.cnt for row in chunk_counts_rows}
+
+    results: list[RepoResponse] = []
+    for repo in repos:
+        data = RepoResponse.model_validate(repo)
+        data.file_count = file_counts.get(repo.id, 0)
+        data.chunk_count = chunk_counts.get(repo.id, 0)
+        results.append(data)
+    return results
 
 
 @router.post("/connect", response_model=RepoResponse, status_code=201)
@@ -33,7 +88,7 @@ def connect_repo(body: RepoConnect, db: Session = Depends(get_db)) -> RepoRespon
         logger.error("Failed to create repo: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to create repository") from exc
 
-    return RepoResponse.model_validate(repo)
+    return _repo_response(repo, db)
 
 
 @router.get("", response_model=list[RepoResponse], include_in_schema=False)
@@ -41,7 +96,7 @@ def connect_repo(body: RepoConnect, db: Session = Depends(get_db)) -> RepoRespon
 def list_repos(db: Session = Depends(get_db)) -> list[RepoResponse]:
     """List all registered repositories."""
     repos = db.query(Repo).order_by(Repo.created_at.desc()).all()
-    return [RepoResponse.model_validate(r) for r in repos]
+    return _build_repo_responses(repos, db)
 
 
 @router.delete("/{repo_id}")
