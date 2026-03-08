@@ -14,11 +14,13 @@
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host/db` |
 | `QDRANT_HOST` | Qdrant vector DB host | `localhost` |
 | `QDRANT_PORT` | Qdrant vector DB port | `6333` |
-| `LLM_MODE` | LLM selection mode (`hybrid` or `gemini_only`) | `gemini_only` |
+| `LLM_MODE` | LLM selection mode (`hybrid`, `gemini_only`, or `groq_only`) | `groq_only` |
 | `GEMINI_API_KEY` | Gemini API key for Gemini-only mode | `AIza...` |
-| `GEMINI_MODEL` | Gemini model to use | `gemini-1.5-flash` |
+| `GEMINI_MODEL` | Gemini model to use | `gemini-1.5-flash-latest` |
 | `OPENROUTER_API_KEY` | OpenRouter API key for hybrid fallback | `sk-or-...` |
-| `OPENROUTER_MODEL` | OpenRouter model for hybrid mode | `anthropic/claude-3.5-sonnet` |
+| `OPENROUTER_MODEL` | OpenRouter model for hybrid fallback | `meta-llama/llama-3.1-8b-instruct:free` |
+| `GROQ_API_KEY` | Groq API key for Groq mode / hybrid fallback | `gsk_...` |
+| `GROQ_MODEL` | Groq model to use | `llama-3.1-8b-instant` |
 | `OLLAMA_BASE_URL` | Ollama base URL for hybrid mode | `http://localhost:11434` |
 | `MODEL_CACHE_DIR` | Directory for caching embedding models | `/tmp/codepilot_models` |
 | `CORS_ORIGINS` | Allowed frontend origin(s), comma-separated | `https://your-app.vercel.app` |
@@ -26,15 +28,37 @@
 > **Note:** If you set `CORS_ORIGINS=*`, all origins are allowed (useful for development). For production, set it to your Vercel frontend URL, e.g. `https://your-app.vercel.app`.
 
 
-### Gemini-only mode (recommended for your use-case)
+### Groq-only mode (recommended free-tier option)
+
+Set these env vars on backend:
+
+- `LLM_MODE=groq_only`
+- `GROQ_API_KEY=<your_groq_key>`
+- `GROQ_MODEL=llama-3.1-8b-instant`
+
+In `groq_only` mode, the backend bypasses Ollama/OpenRouter and calls Groq directly.
+
+### Gemini-only mode
+
 
 Set these env vars on backend:
 
 - `LLM_MODE=gemini_only`
 - `GEMINI_API_KEY=<your_gemini_key>`
-- `GEMINI_MODEL=gemini-1.5-flash` (or another Gemini model)
+- `GEMINI_MODEL=gemini-1.5-flash-latest` (or another Gemini model)
 
 In `gemini_only` mode, the backend bypasses Ollama and OpenRouter and calls Gemini directly.
+
+
+### OpenRouter mode (if you are using OpenRouter key)
+
+Set these backend env vars:
+
+- `LLM_MODE=hybrid`
+- `OPENROUTER_API_KEY=<your_openrouter_key>`
+- `OPENROUTER_MODEL=meta-llama/llama-3.1-8b-instruct:free` (or another available OpenRouter model)
+
+> If your selected `OPENROUTER_MODEL` is unavailable (404 / "No endpoints found"), CodePilot now retries a fallback list and then discovered `:free` models from OpenRouter automatically.
 
 ### Frontend (Vercel)
 
