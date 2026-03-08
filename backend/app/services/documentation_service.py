@@ -4,80 +4,168 @@ Documentation Service for CodePilot.
 This module provides functionality to generate documentation for code files
 by reading repository files, filtering important files, chunking code, and
 sending each chunk to the Groq LLM.
+
+Features:
+- File filtering (ignore directories and file types)
+- File chunking (split large files into smaller chunks)
+- Request throttling (delay between API calls to prevent rate limits)
+- Exponential backoff for retries
 """
 
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Optional
 
 import git
 from git.exc import GitCommandError
 
-from app.services.llm_service import (
-    check_api_key,
-    generate_documentation_response,
-    generate_response,
-)
+from app.services.llm_service import check_api_key
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# FILE FILTERING CONSTANTS
+# =============================================================================
 
 # Directories to ignore when analyzing repositories
 IGNORED_DIRS = [
     "node_modules",
     ".git",
-    "build",
     "dist",
-    "__pycache__",
+    "build",
     "venv",
-    ".venv",
-    "env",
-    ".env",
-    "vendor",
-    "target",
+    "__pycache__",
     "coverage",
     ".next",
     ".nuxt",
     ".cache",
+    ".venv",
+    "env",
+    "vendor",
+    "target",
 ]
 
-# File extensions to include in documentation
-IMPORTANT_EXTENSIONS = {
-    ".py",  # Python
-    ".js",  # JavaScript
-    ".ts",  # TypeScript
-    ".jsx",  # React JSX
-    ".tsx",  # React TypeScript
-    ".java",  # Java
-    ".go",  # Go
-    ".rs",  # Rust
-    ".cpp",  # C++
-    ".c",  # C
-    ".cs",  # C#
-    ".rb",  # Ruby
-    ".php",  # PHP
-    ".swift",  # Swift
-    ".kt",  # Kotlin
-    ".scala",  # Scala
-    ".sh",  # Shell
-    ".bash",  # Bash
-}
+# File extensions to ignore completely
+IGNORED_EXTENSIONS = [
+    ".json",
+    ".lock",
+    ".txt",
+    ".md",
+    ".log",
+    ".env",
+    ".yaml",
+    ".yml",
+    ".xml",
+    ".html",
+    ".css",
+    ".scss",
+    ".sass",
+    ".less",
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".map",
+]
 
-# Chunk size for large files (in lines)
-CHUNK_SIZE = 150
+# Only analyze these file extensions
+ALLOWED_EXTENSIONS = [
+    ".py",   # Python
+    ".js",   # JavaScript
+    ".jsx",  # React JSX
+    ".ts",   # TypeScript
+    ".tsx",  # React TypeScript
+    ".go",   # Go
+    ".java", # Java
+    ".cpp",  # C++
+    ".c",    # C
+    ".rs",   # Rust
+]
+
+# =============================================================================
+# CHUNKING CONSTANTS
+# =============================================================================
 
 # Threshold for chunking (files larger than this will be split)
 LARGE_FILE_THRESHOLD = 200
 
+# Chunk size for splitting large files (in lines)
+DEFAULT_CHUNK_SIZE = 150
 
-def split_code_into_chunks(code: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
+# =============================================================================
+# REQUEST THROTTLING CONSTANTS
+# =============================================================================
+
+# Delay between API calls to prevent rate limits (in seconds)
+REQUEST_DELAY = 1.2
+
+# Retry configuration
+MAX_RETRIES = 3
+INITIAL_RETRY_DELAY = 1.0  # seconds
+RETRY_DELAY_MULTIPLIER = 2.0  # exponential backoff
+
+# =============================================================================
+# PERFORMANCE CONSTANTS
+# =============================================================================
+
+# Maximum number of files to analyze per repository
+MAX_FILES = 80
+
+# Priority order for file analysis (more important files first)
+PRIORITY_EXTENSIONS = [".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".java"]
+
+
+def should_analyze_file(file_path: str) -> bool:
+    """
+    Check if a file should be analyzed based on filtering rules.
+    
+    Args:
+        file_path: Path to the file
+        
+    Returns:
+        True if the file should be analyzed, False otherwise
+    """
+    path = Path(file_path)
+    
+    # Check if any part of the path is in IGNORED_DIRS
+    parts = path.parts
+    for ignored_dir in IGNORED_DIRS:
+        if ignored_dir in parts:
+            logger.debug(f"Skipping file in ignored directory: {file_path}")
+            return False
+    
+    # Check file extension
+    extension = path.suffix.lower()
+    
+    # Skip if extension is in IGNORED_EXTENSIONS
+    if extension in IGNORED_EXTENSIONS:
+        logger.debug(f"Skipping file with ignored extension: {file_path}")
+        return False
+    
+    # Skip if extension is not in ALLOWED_EXTENSIONS
+    if extension not in ALLOWED_EXTENSIONS:
+        logger.debug(f"Skipping file with non-allowed extension: {file_path}")
+        return False
+    
+    return True
+
+
+def split_code_into_chunks(code: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> list[str]:
     """
     Split code into chunks of specified size.
     
     Args:
         code: The source code to split
-        chunk_size: Maximum number of lines per chunk
+        chunk_size: Maximum number of lines per chunk (default: 150)
         
     Returns:
         List of code chunks
@@ -89,41 +177,41 @@ def split_code_into_chunks(code: str, chunk_size: int = CHUNK_SIZE) -> list[str]
         chunk = "\n".join(lines[i:i + chunk_size])
         chunks.append(chunk)
     
+    logger.debug(f"Split code of {len(lines)} lines into {len(chunks)} chunks")
     return chunks
 
 
-def should_ignore_path(path: Path) -> bool:
+def get_file_priority(file_path: str) -> int:
     """
-    Check if a path should be ignored based on IGNORED_DIRS.
+    Get priority score for a file (lower number = higher priority).
     
     Args:
-        path: Path to check
+        file_path: Path to the file
         
     Returns:
-        True if the path should be ignored, False otherwise
+        Priority score (0 = highest priority)
     """
-    path_str = str(path)
+    path = Path(file_path)
+    extension = path.suffix.lower()
     
-    # Check if any part of the path matches an ignored directory
-    parts = path.parts
-    for ignored in IGNORED_DIRS:
-        if ignored in parts:
-            return True
+    for idx, ext in enumerate(PRIORITY_EXTENSIONS):
+        if extension == ext:
+            return idx
     
-    return False
+    return len(PRIORITY_EXTENSIONS)
 
 
-def is_important_file(path: Path) -> bool:
+def sort_files_by_priority(files: list[str]) -> list[str]:
     """
-    Check if a file is important based on its extension.
+    Sort files by analysis priority.
     
     Args:
-        path: File path to check
+        files: List of file paths
         
     Returns:
-        True if the file should be analyzed, False otherwise
+        Sorted list of file paths
     """
-    return path.suffix in IMPORTANT_EXTENSIONS
+    return sorted(files, key=get_file_priority)
 
 
 def clone_repository(repo_url: str, destination: Optional[str] = None) -> str:
@@ -141,7 +229,6 @@ def clone_repository(repo_url: str, destination: Optional[str] = None) -> str:
         GitCommandError: If cloning fails
     """
     if destination is None:
-        # Create a temporary directory
         temp_dir = tempfile.mkdtemp()
         destination = os.path.join(temp_dir, "repo")
     
@@ -154,103 +241,204 @@ def clone_repository(repo_url: str, destination: Optional[str] = None) -> str:
         raise
 
 
-def read_repository_files(repo_path: str) -> dict[str, str]:
+def scan_repository_files(repo_path: str) -> list[str]:
     """
-    Read all important files from a repository.
+    Scan repository and return list of files to analyze.
     
     Args:
         repo_path: Path to the repository
         
     Returns:
-        Dictionary mapping file paths to their content
+        List of file paths to analyze
     """
-    files_content = {}
+    files_to_analyze = []
     repo_dir = Path(repo_path)
     
     for file_path in repo_dir.rglob("*"):
-        # Skip ignored paths
-        if should_ignore_path(file_path):
-            continue
-        
         # Skip non-files
         if not file_path.is_file():
             continue
         
-        # Skip non-important files
-        if not is_important_file(file_path):
+        # Get relative path
+        try:
+            relative_path = file_path.relative_to(repo_dir)
+        except ValueError:
             continue
         
+        # Check if file should be analyzed
+        if should_analyze_file(str(relative_path)):
+            files_to_analyze.append(str(relative_path))
+    
+    # Sort by priority
+    files_to_analyze = sort_files_by_priority(files_to_analyze)
+    
+    # Limit to MAX_FILES
+    if len(files_to_analyze) > MAX_FILES:
+        logger.warning(
+            f"Repository has {len(files_to_analyze)} files, limiting to {MAX_FILES}"
+        )
+        files_to_analyze = files_to_analyze[:MAX_FILES]
+    
+    logger.info(f"Found {len(files_to_analyze)} files to analyze")
+    return files_to_analyze
+
+
+def read_file_content(repo_path: str, file_path: str) -> Optional[str]:
+    """
+    Read content of a file.
+    
+    Args:
+        repo_path: Path to the repository
+        file_path: Relative path to the file
+        
+    Returns:
+        File content or None if reading fails
+    """
+    full_path = Path(repo_path) / file_path
+    
+    try:
+        content = full_path.read_text(encoding="utf-8")
+        return content
+    except Exception as e:
+        logger.warning(f"Failed to read file {file_path}: {e}")
+        return None
+
+
+def generate_chunk_documentation(
+    code: str,
+    language: str,
+    file_path: str,
+    chunk_index: int,
+) -> dict:
+    """
+    Generate documentation for a single code chunk.
+    
+    Args:
+        code: Code chunk to document
+        language: Programming language
+        file_path: Path to the source file
+        chunk_index: Index of the chunk
+        
+    Returns:
+        Dictionary with documentation
+    """
+    # Import here to avoid circular imports
+    from app.services.llm_service import generate_ai_response
+    
+    system_prompt = """You are a senior software engineer and teacher.
+
+Explain the following code in simple English so that a beginner developer can understand it.
+
+Return the explanation using this format:
+
+Function Name
+Description
+Inputs
+Outputs
+Steps
+Time Complexity
+Space Complexity"""
+
+    user_prompt = f"""Please explain this {language} code:
+
+```{language}
+{code}
+```
+
+Provide a clear and simple explanation."""
+
+    # Retry logic with exponential backoff
+    for attempt in range(MAX_RETRIES):
         try:
-            # Get relative path
-            relative_path = file_path.relative_to(repo_dir)
+            explanation = generate_ai_response(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+            )
             
-            # Read file content
-            content = file_path.read_text(encoding="utf-8")
-            files_content[str(relative_path)] = content
+            # Check for error response
+            if "unavailable" in explanation.lower():
+                raise Exception("AI service unavailable")
+            
+            # Add delay between requests to prevent rate limits
+            time.sleep(REQUEST_DELAY)
+            
+            return {
+                "file": file_path,
+                "chunk": chunk_index + 1,
+                "language": language,
+                "explanation": explanation,
+            }
             
         except Exception as e:
-            logger.warning("Failed to read file %s: %s", file_path, e)
-            continue
-    
-    return files_content
+            logger.warning(f"Error generating documentation (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
+            
+            if attempt < MAX_RETRIES - 1:
+                wait_time = INITIAL_RETRY_DELAY * (RETRY_DELAY_MULTIPLIER ** attempt)
+                logger.info(f"Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"Failed to generate documentation after {MAX_RETRIES} attempts")
+                return {
+                    "file": file_path,
+                    "chunk": chunk_index + 1,
+                    "language": language,
+                    "explanation": "Failed to generate documentation. Please try again.",
+                }
 
 
 def generate_file_documentation(
-    file_path: str, code: str, language: str = "unknown"
+    repo_path: str,
+    file_path: str,
 ) -> dict:
     """
     Generate documentation for a single file.
     
     Args:
-        file_path: Path to the file
-        code: Source code
-        language: Programming language
+        repo_path: Path to the repository
+        file_path: Relative path to the file
         
     Returns:
         Dictionary with documentation
     """
-    lines = code.split("\n")
+    # Read file content
+    content = read_file_content(repo_path, file_path)
+    
+    if content is None:
+        return {
+            "file": file_path,
+            "error": "Failed to read file",
+            "chunks": [],
+        }
+    
+    # Determine language from extension
+    extension = Path(file_path).suffix.lower()
+    language = extension.lstrip(".")
+    
+    lines = content.split("\n")
+    results = {
+        "file": file_path,
+        "language": language,
+        "total_lines": len(lines),
+        "chunks": [],
+    }
     
     # Check if file needs to be chunked
     if len(lines) > LARGE_FILE_THRESHOLD:
         # Split into chunks
-        chunks = split_code_into_chunks(code, CHUNK_SIZE)
+        chunks = split_code_into_chunks(content, DEFAULT_CHUNK_SIZE)
+        results["total_chunks"] = len(chunks)
         
-        documentations = []
-        for i, chunk in enumerate(chunks):
-            logger.info(
-                "Processing chunk %d of %d for file %s", 
-                i + 1, len(chunks), file_path
-            )
-            
-            chunk_doc = generate_documentation_response(chunk, language)
-            documentations.append(
-                {
-                    "chunk_index": i,
-                    "start_line": i * CHUNK_SIZE + 1,
-                    "end_line": min((i + 1) * CHUNK_SIZE, len(lines)),
-                    "documentation": chunk_doc,
-                }
-            )
-        
-        return {
-            "file_path": file_path,
-            "language": language,
-            "total_lines": len(lines),
-            "chunks": len(chunks),
-            "documentations": documentations,
-        }
+        for idx, chunk in enumerate(chunks):
+            logger.info(f"Processing chunk {idx + 1}/{len(chunks)} for {file_path}")
+            chunk_doc = generate_chunk_documentation(chunk, language, file_path, idx)
+            results["chunks"].append(chunk_doc)
     else:
         # Process as single chunk
-        doc = generate_documentation_response(code, language)
-        
-        return {
-            "file_path": file_path,
-            "language": language,
-            "total_lines": len(lines),
-            "chunks": 1,
-            "documentation": doc,
-        }
+        results["total_chunks"] = 1
+        chunk_doc = generate_chunk_documentation(content, language, file_path, 0)
+        results["chunks"].append(chunk_doc)
+    
+    return results
 
 
 def generate_repo_documentation(repo_url: str) -> dict:
@@ -265,6 +453,7 @@ def generate_repo_documentation(repo_url: str) -> dict:
     """
     # Check API key
     if not check_api_key():
+        logger.error("GROQ_API_KEY is not configured")
         return {
             "error": "GROQ_API_KEY is not configured. Please set the GROQ_API_KEY environment variable.",
             "repo_url": repo_url,
@@ -274,45 +463,47 @@ def generate_repo_documentation(repo_url: str) -> dict:
     try:
         repo_path = clone_repository(repo_url)
     except GitCommandError as e:
+        logger.error(f"Failed to clone repository: {e}")
         return {
             "error": f"Failed to clone repository: {str(e)}",
             "repo_url": repo_url,
         }
     
-    # Read all files
-    files_content = read_repository_files(repo_path)
-    
-    if not files_content:
-        return {
-            "error": "No important files found in repository",
-            "repo_url": repo_url,
-            "files_processed": 0,
-        }
-    
-    # Generate documentation for each file
-    results = []
-    for file_path, content in files_content.items():
-        # Determine language from extension
-        ext = Path(file_path).suffix
-        language = ext.lstrip(".")
-        
-        logger.info("Generating documentation for %s", file_path)
-        
-        doc = generate_file_documentation(file_path, content, language)
-        results.append(doc)
-    
-    # Clean up temporary directory
     try:
-        import shutil
-        shutil.rmtree(Path(repo_path).parent)
-    except Exception as e:
-        logger.warning("Failed to clean up temporary directory: %s", e)
-    
-    return {
-        "repo_url": repo_url,
-        "files_processed": len(files_content),
-        "files": results,
-    }
+        # Scan files to analyze
+        files_to_analyze = scan_repository_files(repo_path)
+        
+        if not files_to_analyze:
+            return {
+                "error": "No analyzable files found in repository",
+                "repo_url": repo_url,
+                "files_processed": 0,
+            }
+        
+        # Generate documentation for each file
+        results = []
+        for idx, file_path in enumerate(files_to_analyze):
+            logger.info(f"Processing file {idx + 1}/{len(files_to_analyze)}: {file_path}")
+            
+            file_doc = generate_file_documentation(repo_path, file_path)
+            results.append(file_doc)
+        
+        return {
+            "repo_url": repo_url,
+            "files_processed": len(files_to_analyze),
+            "files": results,
+        }
+        
+    finally:
+        # Clean up temporary directory
+        try:
+            import shutil
+            parent_dir = Path(repo_path).parent
+            if parent_dir.exists():
+                shutil.rmtree(parent_dir)
+                logger.debug(f"Cleaned up temporary directory: {parent_dir}")
+        except Exception as e:
+            logger.warning(f"Failed to clean up temporary directory: {e}")
 
 
 def get_supported_languages() -> list[str]:
@@ -322,5 +513,5 @@ def get_supported_languages() -> list[str]:
     Returns:
         List of supported language extensions
     """
-    return sorted(list(IMPORTANT_EXTENSIONS))
+    return sorted(ALLOWED_EXTENSIONS)
 

@@ -37,8 +37,85 @@ def get_groq_client() -> Groq:
 # Default model
 DEFAULT_MODEL = "llama-3.1-70b-versatile"
 
+# Retry configuration
+MAX_RETRIES = 3
+INITIAL_DELAY = 1.0  # seconds
+DELAY_MULTIPLIER = 2.0  # exponential backoff
+
 # Delay between API calls to prevent rate limits (in seconds)
 API_CALL_DELAY = 1.0
+
+
+def generate_ai_response(
+    prompt: str,
+    system_prompt: str = "",
+    model: str = DEFAULT_MODEL,
+    temperature: float = 0.3,
+    max_tokens: int = 2048,
+) -> str:
+    """
+    Generate an AI response using the Groq API.
+    
+    This is the main function for generating responses with Groq.
+    It includes retry logic for rate limits and connection errors.
+    
+    Args:
+        prompt: The user prompt/question
+        system_prompt: Optional system prompt to set context
+        model: The Groq model to use (default: llama-3.1-70b-versatile)
+        temperature: Sampling temperature (0.0 to 1.0)
+        max_tokens: Maximum tokens in the response
+        
+    Returns:
+        The generated response text, or error message if failed
+    """
+    if not GROQ_API_KEY:
+        logger.error("GROQ_API_KEY is not configured")
+        return "AI temporarily unavailable. Please try again."
+    
+    for attempt in range(MAX_RETRIES):
+        try:
+            client = get_groq_client()
+            
+            # Build messages
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+            
+            # Make API call
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            
+            # Add delay between successful calls to prevent rate limits
+            time.sleep(API_CALL_DELAY)
+            
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            error_str = str(e).lower()
+            is_rate_limit = "rate limit" in error_str or "429" in error_str
+            is_connection_error = "connection" in error_str or "timeout" in error_str
+            
+            if is_rate_limit or is_connection_error:
+                logger.warning(f"Retryable error on attempt {attempt + 1}/{MAX_RETRIES}: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    wait_time = INITIAL_DELAY * (DELAY_MULTIPLIER ** attempt)
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(f"Max retries ({MAX_RETRIES}) reached")
+                    return "AI temporarily unavailable. Please try again."
+            else:
+                logger.error(f"Unexpected error during Groq API call: {e}")
+                return "AI temporarily unavailable. Please try again."
+    
+    return "AI temporarily unavailable. Please try again."
 
 
 def generate_response(
@@ -51,6 +128,8 @@ def generate_response(
     """
     Generate a response using the Groq API.
     
+    This is an alias for generate_ai_response for backward compatibility.
+    
     Args:
         prompt: The user prompt/question
         system_prompt: Optional system prompt to set context
@@ -60,40 +139,14 @@ def generate_response(
         
     Returns:
         The generated response text
-        
-    Raises:
-        ValueError: If GROQ_API_KEY is not configured
     """
-    if not GROQ_API_KEY:
-        logger.error("GROQ_API_KEY is not configured")
-        return "Error: GROQ_API_KEY is not configured. Please set the GROQ_API_KEY environment variable."
-    
-    try:
-        client = get_groq_client()
-        
-        # Build messages
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-        
-        # Make API call
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        
-        # Add delay to prevent rate limits
-        time.sleep(API_CALL_DELAY)
-        
-        return response.choices[0].message.content
-        
-    except Exception as e:
-        logger.error("Groq API call failed: %s", e)
-        time.sleep(2)
-        return f"AI temporarily unavailable. Please try again. Error: {str(e)}"
+    return generate_ai_response(
+        prompt=prompt,
+        system_prompt=system_prompt,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
 
 
 def generate_documentation_response(code: str, language: str = "unknown") -> str:
@@ -109,9 +162,9 @@ def generate_documentation_response(code: str, language: str = "unknown") -> str
     """
     system_prompt = """You are a senior software engineer and teacher.
 
-Explain the following code in simple English so that a beginner developer can understand it.
+Explain the following code in simple English for a beginner developer.
 
-Return format:
+Return the result in this format:
 
 Function Name:
 Description:
@@ -128,8 +181,8 @@ Space Complexity:"""
 ```
 
 Provide a clear and simple explanation."""
-    
-    return generate_response(user_prompt, system_prompt=system_prompt)
+
+    return generate_ai_response(user_prompt, system_prompt=system_prompt)
 
 
 def generate_code_explanation(code: str) -> str:
@@ -150,7 +203,7 @@ Focus on what the code does, not how it does it."""
 
 {code}"""
 
-    return generate_response(user_prompt, system_prompt=system_prompt)
+    return generate_ai_response(user_prompt, system_prompt=system_prompt)
 
 
 def check_api_key() -> bool:
