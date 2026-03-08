@@ -57,6 +57,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 try:
     from app.routers import repos, index, query, diagnose, patch, sandbox, docs
+    from app.routers.docs_router import router as docs_router
 
     app.include_router(repos.router, prefix="/api")
     app.include_router(index.router, prefix="/api")
@@ -65,6 +66,7 @@ try:
     app.include_router(patch.router, prefix="/api")
     app.include_router(sandbox.router, prefix="/api")
     app.include_router(docs.router, prefix="/api")
+    app.include_router(docs_router, prefix="/api")
 except ImportError as e:
     logger.warning("Failed to import some routers: %s", e)
 
