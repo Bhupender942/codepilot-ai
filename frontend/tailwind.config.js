@@ -15,7 +15,12 @@ export default {
           800: '#3730a3', 900: '#312e81',
         },
       },
+      animation: {
+        'spin-slow': 'spin 2s linear infinite',
+        'pulse-subtle': 'pulse 3s ease-in-out infinite',
+      },
     },
   },
   plugins: [],
 }
+

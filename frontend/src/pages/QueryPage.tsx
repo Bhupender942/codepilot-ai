@@ -1,6 +1,36 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Search, 
+  Loader2, 
+  AlertCircle, 
+  MessageSquare,
+  FileText,
+  Zap,
+  Copy,
+  Check
+} from 'lucide-react'
 import { listRepos, query, type Repo, type QueryResult } from '../api/client'
 import CodeBlock from '../components/CodeBlock'
+
+// Loading skeleton for results
+function ResultSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5 animate-pulse">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-4 w-20 bg-slate-700 rounded" />
+          <div className="h-4 w-12 bg-slate-700 rounded" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-full bg-slate-700/50 rounded" />
+          <div className="h-3 w-full bg-slate-700/50 rounded" />
+          <div className="h-3 w-2/3 bg-slate-700/50 rounded" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function QueryPage() {
   const [repos, setRepos] = useState<Repo[]>([])
@@ -9,8 +39,8 @@ export default function QueryPage() {
   const [result, setResult] = useState<QueryResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
   const [repoLoadError, setRepoLoadError] = useState('')
+  const [copiedAnswer, setCopiedAnswer] = useState(false)
 
   const loadRepos = () => {
     setRepoLoadError('')
@@ -34,85 +64,197 @@ export default function QueryPage() {
     }
   }
 
+  const copyAnswer = () => {
+    if (result?.answer) {
+      navigator.clipboard.writeText(result.answer)
+      setCopiedAnswer(true)
+      setTimeout(() => setCopiedAnswer(false), 2000)
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-1">🔍 AI Query</h1>
-        <p className="text-slate-400 text-sm">Ask questions about your codebase using AI-powered retrieval</p>
-      </div>
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <div className="flex items-center gap-3 mb-1">
+          <div className="p-2 bg-indigo-500/20 rounded-lg">
+            <Search className="w-5 h-5 text-indigo-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white">AI Query</h1>
+        </div>
+        <p className="text-slate-400 text-sm ml-1">Ask questions about your codebase using AI-powered retrieval</p>
+      </motion.div>
 
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6 space-y-4">
+      {/* Query Form */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5 mb-6 space-y-4"
+      >
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">Repository</label>
+          <label className="label flex items-center gap-2">
+            <FileText className="w-3.5 h-3.5 text-slate-400" />
+            Repository
+          </label>
           {repoLoadError ? (
-            <div className="flex items-center gap-3">
-              <span className="text-red-400 text-xs">{repoLoadError}</span>
-              <button onClick={loadRepos} aria-label="Retry loading repositories" className="text-xs text-indigo-400 hover:underline">Retry</button>
+            <div className="flex items-center gap-3 p-3 bg-rose-900/20 border border-rose-700/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-rose-400" />
+              <span className="text-sm text-rose-300">{repoLoadError}</span>
+              <button onClick={loadRepos} className="ml-auto text-sm text-indigo-400 hover:text-indigo-300">Retry</button>
             </div>
           ) : (
-          <select
-            value={repoId}
-            onChange={e => setRepoId(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-          >
-            <option value="">Select a repository…</option>
-            {repos.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
+            <select
+              value={repoId}
+              onChange={e => setRepoId(e.target.value)}
+              className="input-field"
+            >
+              <option value="">Select a repository…</option>
+              {repos.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
           )}
         </div>
+        
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">Question</label>
+          <label className="label flex items-center gap-2">
+            <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+            Question
+          </label>
           <textarea
             rows={3}
-            placeholder="e.g. How does the authentication flow work?"
+            placeholder="e.g. How does the authentication flow work? What are the main components?"
             value={question}
             onChange={e => setQuestion(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSubmit() }}
-            className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+            className="input-field resize-none"
           />
+          <p className="text-xs text-slate-500 mt-1.5">Press Ctrl+Enter to submit</p>
         </div>
-        {error && <div className="bg-red-900/40 border border-red-700 text-red-300 px-4 py-2 rounded text-sm">{error}</div>}
+        
+        <AnimatePresence>
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-rose-900/20 border border-rose-700/30 text-rose-300 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         <button
           onClick={handleSubmit}
           disabled={loading || !repoId || !question.trim()}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="btn-primary inline-flex items-center gap-2"
         >
-          {loading ? 'Searching…' : 'Ask AI'}
-        </button>
-      </div>
-
-      {result && (
-        <div className="space-y-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-indigo-400 text-sm font-semibold">AI Answer</span>
-              {result.cached && <span className="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded">cached</span>}
-            </div>
-            <p className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{result.answer}</p>
-          </div>
-
-          {result.citations.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-slate-300 mb-3">Citations ({result.citations.length})</h2>
-              <div className="space-y-3">
-                {result.citations.map((c, i) => (
-                  <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700">
-                      <span className="text-xs text-slate-300 font-mono">{c.file_path}</span>
-                      <span className="text-xs text-slate-500">Lines {c.start_line}–{c.end_line} · score {c.score.toFixed(2)}</span>
-                    </div>
-                    <CodeBlock
-                      code={c.text}
-                      language={c.file_path.split('.').pop() || 'text'}
-                      startingLineNumber={c.start_line}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Searching…
+            </>
+          ) : (
+            <>
+              <Zap className="w-4 h-4" />
+              Ask AI
+            </>
           )}
-        </div>
-      )}
+        </button>
+      </motion.div>
+
+      {/* Results */}
+      <AnimatePresence mode="wait">
+        {loading && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <ResultSkeleton />
+          </motion.div>
+        )}
+
+        {result && !loading && (
+          <motion.div
+            key="result"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            {/* AI Answer */}
+            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+                    <Zap className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-sm font-semibold text-white">AI Answer</span>
+                  {result.cached && (
+                    <span className="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">cached</span>
+                  )}
+                </div>
+                <button
+                  onClick={copyAnswer}
+                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors"
+                >
+                  {copiedAnswer ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      <span className="text-emerald-400">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{result.answer}</p>
+            </div>
+
+            {/* Citations */}
+            {result.citations.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-slate-400" />
+                  Citations ({result.citations.length})
+                </h2>
+                <div className="space-y-3">
+                  {result.citations.map((c, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/30">
+                        <span className="text-xs text-indigo-300 font-mono">{c.file_path}</span>
+                        <span className="text-xs text-slate-500">
+                          Lines {c.start_line}–{c.end_line} · score {c.score.toFixed(2)}
+                        </span>
+                      </div>
+                      <CodeBlock
+                        code={c.text}
+                        language={c.file_path.split('.').pop() || 'text'}
+                        startingLineNumber={c.start_line}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
