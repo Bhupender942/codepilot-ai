@@ -17,15 +17,15 @@ import CodeBlock from '../components/CodeBlock'
 function ResultSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5 animate-pulse">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 animate-pulse">
         <div className="flex items-center gap-2 mb-3">
-          <div className="h-4 w-20 bg-slate-700 rounded" />
-          <div className="h-4 w-12 bg-slate-700 rounded" />
+          <div className="h-4 w-20 bg-slate-200 rounded" />
+          <div className="h-4 w-12 bg-slate-200 rounded" />
         </div>
         <div className="space-y-2">
-          <div className="h-3 w-full bg-slate-700/50 rounded" />
-          <div className="h-3 w-full bg-slate-700/50 rounded" />
-          <div className="h-3 w-2/3 bg-slate-700/50 rounded" />
+          <div className="h-3 w-full bg-slate-100 rounded" />
+          <div className="h-3 w-full bg-slate-100 rounded" />
+          <div className="h-3 w-2/3 bg-slate-100 rounded" />
         </div>
       </div>
     </div>
@@ -81,12 +81,12 @@ export default function QueryPage() {
         className="mb-6"
       >
         <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 bg-indigo-500/20 rounded-lg">
-            <Search className="w-5 h-5 text-indigo-400" />
+          <div className="p-2 bg-black rounded-lg">
+            <Search className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">AI Query</h1>
+          <h1 className="text-2xl font-bold text-slate-900">AI Query</h1>
         </div>
-        <p className="text-slate-400 text-sm ml-1">Ask questions about your codebase using AI-powered retrieval</p>
+        <p className="text-slate-500 text-sm ml-1">Ask questions about your codebase using AI-powered retrieval</p>
       </motion.div>
 
       {/* Query Form */}
@@ -94,7 +94,7 @@ export default function QueryPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5 mb-6 space-y-4"
+        className="bg-white border border-slate-200 rounded-xl p-5 mb-6 space-y-4"
       >
         <div>
           <label className="label flex items-center gap-2">
@@ -102,10 +102,10 @@ export default function QueryPage() {
             Repository
           </label>
           {repoLoadError ? (
-            <div className="flex items-center gap-3 p-3 bg-rose-900/20 border border-rose-700/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-              <span className="text-sm text-rose-300">{repoLoadError}</span>
-              <button onClick={loadRepos} className="ml-auto text-sm text-indigo-400 hover:text-indigo-300">Retry</button>
+            <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-red-700">{repoLoadError}</span>
+              <button onClick={loadRepos} className="ml-auto text-sm text-black hover:text-slate-700">Retry</button>
             </div>
           ) : (
             <select
@@ -132,7 +132,7 @@ export default function QueryPage() {
             onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSubmit() }}
             className="input-field resize-none"
           />
-          <p className="text-xs text-slate-500 mt-1.5">Press Ctrl+Enter to submit</p>
+          <p className="text-xs text-slate-400 mt-1.5">Press Ctrl+Enter to submit</p>
         </div>
         
         <AnimatePresence>
@@ -141,7 +141,7 @@ export default function QueryPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="bg-rose-900/20 border border-rose-700/30 text-rose-300 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
             >
               <AlertCircle className="w-4 h-4" />
               {error}
@@ -189,25 +189,25 @@ export default function QueryPage() {
             className="space-y-4"
           >
             {/* AI Answer */}
-            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5">
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+                  <div className="p-1.5 bg-black rounded-lg">
                     <Zap className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <span className="text-sm font-semibold text-white">AI Answer</span>
+                  <span className="text-sm font-semibold text-slate-900">AI Answer</span>
                   {result.cached && (
-                    <span className="text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">cached</span>
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">cached</span>
                   )}
                 </div>
                 <button
                   onClick={copyAnswer}
-                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors"
+                  className="text-xs text-slate-500 hover:text-black flex items-center gap-1.5 transition-colors"
                 >
                   {copiedAnswer ? (
                     <>
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400">Copied!</span>
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span className="text-green-600">Copied!</span>
                     </>
                   ) : (
                     <>
@@ -217,13 +217,13 @@ export default function QueryPage() {
                   )}
                 </button>
               </div>
-              <p className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{result.answer}</p>
+              <p className="text-slate-700 text-sm whitespace-pre-wrap leading-relaxed">{result.answer}</p>
             </div>
 
             {/* Citations */}
             {result.citations.length > 0 && (
               <div>
-                <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-400" />
                   Citations ({result.citations.length})
                 </h2>
@@ -234,11 +234,11 @@ export default function QueryPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden"
+                      className="bg-white border border-slate-200 rounded-xl overflow-hidden"
                     >
-                      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/30">
-                        <span className="text-xs text-indigo-300 font-mono">{c.file_path}</span>
-                        <span className="text-xs text-slate-500">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                        <span className="text-xs text-black font-mono">{c.file_path}</span>
+                        <span className="text-xs text-slate-400">
                           Lines {c.start_line}–{c.end_line} · score {c.score.toFixed(2)}
                         </span>
                       </div>

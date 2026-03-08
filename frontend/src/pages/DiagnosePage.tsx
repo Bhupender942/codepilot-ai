@@ -16,7 +16,7 @@ import { listRepos, diagnose, type Repo, type DiagnoseResult } from '../api/clie
 function SeverityBadge({ probability }: { probability: number }) {
   if (probability >= 0.7) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs bg-rose-900/30 text-rose-400 px-2 py-0.5 rounded-full border border-rose-700/30">
+      <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">
         <XCircle className="w-3 h-3" />
         High
       </span>
@@ -24,14 +24,14 @@ function SeverityBadge({ probability }: { probability: number }) {
   }
   if (probability >= 0.4) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs bg-amber-900/30 text-amber-400 px-2 py-0.5 rounded-full border border-amber-700/30">
+      <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
         <AlertTriangle className="w-3 h-3" />
         Medium
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-700/30">
+    <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
       <CheckCircle className="w-3 h-3" />
       Low
     </span>
@@ -79,12 +79,12 @@ export default function DiagnosePage() {
         className="mb-6"
       >
         <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 bg-rose-500/20 rounded-lg">
-            <Bug className="w-5 h-5 text-rose-400" />
+          <div className="p-2 bg-black rounded-lg">
+            <Bug className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Error Diagnosis</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Error Diagnosis</h1>
         </div>
-        <p className="text-slate-400 text-sm ml-1">Identify the root cause of errors using AI-powered code analysis</p>
+        <p className="text-slate-500 text-sm ml-1">Identify the root cause of errors using AI-powered code analysis</p>
       </motion.div>
 
       {/* Form */}
@@ -92,7 +92,7 @@ export default function DiagnosePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5 mb-6 space-y-4"
+        className="bg-white border border-slate-200 rounded-xl p-5 mb-6 space-y-4"
       >
         <div>
           <label className="label flex items-center gap-2">
@@ -100,10 +100,10 @@ export default function DiagnosePage() {
             Repository
           </label>
           {repoLoadError ? (
-            <div className="flex items-center gap-3 p-3 bg-rose-900/20 border border-rose-700/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-              <span className="text-sm text-rose-300">{repoLoadError}</span>
-              <button onClick={loadRepos} className="ml-auto text-sm text-indigo-400 hover:text-indigo-300">Retry</button>
+            <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-red-700">{repoLoadError}</span>
+              <button onClick={loadRepos} className="ml-auto text-sm text-black hover:text-slate-700">Retry</button>
             </div>
           ) : (
             <select
@@ -150,7 +150,7 @@ export default function DiagnosePage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="bg-rose-900/20 border border-rose-700/30 text-rose-300 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
             >
               <AlertCircle className="w-4 h-4" />
               {error}
@@ -184,15 +184,15 @@ export default function DiagnosePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+            <h2 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
               Suspects ({result.suspects.length})
             </h2>
             
             {result.suspects.length === 0 ? (
-              <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-8 text-center">
-                <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
-                <p className="text-slate-400">No suspects found for this error.</p>
+              <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                <p className="text-slate-500">No suspects found for this error.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -202,15 +202,15 @@ export default function DiagnosePage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600/50 transition-colors"
+                    className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <FileCode className="w-4 h-4 text-indigo-400" />
-                        <span className="text-sm font-mono text-indigo-300">{s.file_path}</span>
+                        <FileCode className="w-4 h-4 text-slate-600" />
+                        <span className="text-sm font-mono text-black">{s.file_path}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500">Lines {s.start_line}–{s.end_line}</span>
+                        <span className="text-xs text-slate-400">Lines {s.start_line}–{s.end_line}</span>
                         <SeverityBadge probability={s.probability} />
                       </div>
                     </div>
@@ -218,30 +218,30 @@ export default function DiagnosePage() {
                     {/* Probability bar */}
                     <div className="mb-3">
                       <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="text-slate-400 flex items-center gap-1">
+                        <span className="text-slate-500 flex items-center gap-1">
                           <Percent className="w-3 h-3" />
                           Confidence
                         </span>
                         <span className={`font-medium ${
-                          s.probability >= 0.7 ? 'text-rose-400' : 
-                          s.probability >= 0.4 ? 'text-amber-400' : 'text-emerald-400'
+                          s.probability >= 0.7 ? 'text-red-600' : 
+                          s.probability >= 0.4 ? 'text-amber-600' : 'text-green-600'
                         }`}>
                           {(s.probability * 100).toFixed(0)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                         <div
                           className={`h-2 rounded-full transition-all duration-500 ${
-                            s.probability >= 0.7 ? 'bg-gradient-to-r from-rose-500 to-rose-400' : 
-                            s.probability >= 0.4 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 
-                            'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                            s.probability >= 0.7 ? 'bg-red-500' : 
+                            s.probability >= 0.4 ? 'bg-amber-500' : 
+                            'bg-green-500'
                           }`}
                           style={{ width: `${s.probability * 100}%` }}
                         />
                       </div>
                     </div>
                     
-                    <p className="text-xs text-slate-300 leading-relaxed">{s.explanation}</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">{s.explanation}</p>
                   </motion.div>
                 ))}
               </div>

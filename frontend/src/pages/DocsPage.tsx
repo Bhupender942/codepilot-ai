@@ -19,13 +19,13 @@ function StatusBadge({ status }: { status: string }) {
   const getConfig = () => {
     switch (status) {
       case 'completed':
-        return { icon: CheckCircle, bg: 'bg-emerald-900/30', text: 'text-emerald-400', border: 'border-emerald-700/30' }
+        return { icon: CheckCircle, bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' }
       case 'failed':
-        return { icon: XCircle, bg: 'bg-rose-900/30', text: 'text-rose-400', border: 'border-rose-700/30' }
+        return { icon: XCircle, bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' }
       case 'pending':
       case 'processing':
       default:
-        return { icon: Clock, bg: 'bg-amber-900/30', text: 'text-amber-400', border: 'border-amber-700/30' }
+        return { icon: Clock, bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' }
     }
   }
   
@@ -109,12 +109,12 @@ export default function DocsPage() {
         className="mb-6"
       >
         <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 bg-emerald-500/20 rounded-lg">
-            <BookOpen className="w-5 h-5 text-emerald-400" />
+          <div className="p-2 bg-black rounded-lg">
+            <BookOpen className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Documentation Generator</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Documentation Generator</h1>
         </div>
-        <p className="text-slate-400 text-sm ml-1">Generate AI-powered docstrings and documentation for your codebase</p>
+        <p className="text-slate-500 text-sm ml-1">Generate AI-powered docstrings and documentation for your codebase</p>
       </motion.div>
 
       {/* Form */}
@@ -122,7 +122,7 @@ export default function DocsPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5 mb-6 space-y-4"
+        className="bg-white border border-slate-200 rounded-xl p-5 mb-6 space-y-4"
       >
         <div>
           <label className="label flex items-center gap-2">
@@ -130,10 +130,10 @@ export default function DocsPage() {
             Repository
           </label>
           {repoLoadError ? (
-            <div className="flex items-center gap-3 p-3 bg-rose-900/20 border border-rose-700/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-              <span className="text-sm text-rose-300">{repoLoadError}</span>
-              <button onClick={loadRepos} className="ml-auto text-sm text-indigo-400 hover:text-indigo-300">Retry</button>
+            <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-red-700">{repoLoadError}</span>
+              <button onClick={loadRepos} className="ml-auto text-sm text-black hover:text-slate-700">Retry</button>
             </div>
           ) : (
             <select
@@ -166,7 +166,7 @@ export default function DocsPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="bg-rose-900/20 border border-rose-700/30 text-rose-300 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
             >
               <AlertCircle className="w-4 h-4" />
               {error}
@@ -178,7 +178,7 @@ export default function DocsPage() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-2 text-sm text-amber-400"
+            className="flex items-center gap-2 text-sm text-amber-600"
           >
             <Loader2 className="w-4 h-4 animate-spin" />
             {statusMsg}
@@ -211,15 +211,15 @@ export default function DocsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-green-600" />
               Generated Documentation ({docs.length} chunks)
             </h2>
             
             {docs.length === 0 ? (
-              <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-8 text-center">
-                <FileCode className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                <p className="text-slate-400">No documentable code chunks found.</p>
+              <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+                <FileCode className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500">No documentable code chunks found.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -229,29 +229,29 @@ export default function DocsPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="bg-slate-900/50 border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600/50 transition-colors"
+                    className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors"
                   >
-                    <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-slate-700/30">
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
                       <div className="flex items-center gap-2">
-                        <FileCode className="w-4 h-4 text-indigo-400" />
-                        <span className="text-sm font-mono text-indigo-300">{d.file_path}</span>
+                        <FileCode className="w-4 h-4 text-slate-600" />
+                        <span className="text-sm font-mono text-black">{d.file_path}</span>
                       </div>
-                      <span className="text-xs text-slate-500">Lines {d.start_line}–{d.end_line}</span>
+                      <span className="text-xs text-slate-400">Lines {d.start_line}–{d.end_line}</span>
                     </div>
                     <div className="p-4 space-y-4">
                       {d.docstring && (
                         <div>
-                          <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                          <span className="text-xs font-semibold text-green-600 uppercase tracking-wide flex items-center gap-1.5 mb-2">
                             <BookOpen className="w-3 h-3" />
                             Docstring
                           </span>
-                          <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed bg-slate-800/30 p-3 rounded-lg">{d.docstring}</p>
+                          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 p-3 rounded-lg">{d.docstring}</p>
                         </div>
                       )}
                       
                       {d.example && (
                         <div>
-                          <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                          <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-1.5 mb-2">
                             <Sparkles className="w-3 h-3" />
                             Example
                           </span>
@@ -263,11 +263,11 @@ export default function DocsPage() {
                       
                       {d.complexity && (
                         <div>
-                          <span className="text-xs font-semibold text-purple-400 uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                          <span className="text-xs font-semibold text-purple-600 uppercase tracking-wide flex items-center gap-1.5 mb-2">
                             <RefreshCw className="w-3 h-3" />
                             Complexity
                           </span>
-                          <p className="text-sm text-slate-400">{d.complexity}</p>
+                          <p className="text-sm text-slate-500">{d.complexity}</p>
                         </div>
                       )}
                     </div>

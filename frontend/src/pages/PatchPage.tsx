@@ -7,10 +7,7 @@ import {
   FileCode,
   GitPullRequest,
   Lightbulb,
-  TestTube,
-  Check,
-  X,
-  Minus
+  TestTube
 } from 'lucide-react'
 import { listRepos, proposePatch, type Repo, type PatchResult } from '../api/client'
 import DiffViewer from '../components/DiffViewer'
@@ -19,9 +16,9 @@ import CodeBlock from '../components/CodeBlock'
 // Confidence indicator component
 function ConfidenceIndicator({ confidence }: { confidence: number }) {
   const getColor = () => {
-    if (confidence >= 0.7) return { bg: 'bg-emerald-500', text: 'text-emerald-400', label: 'High' }
-    if (confidence >= 0.4) return { bg: 'bg-amber-500', text: 'text-amber-400', label: 'Medium' }
-    return { bg: 'bg-rose-500', text: 'text-rose-400', label: 'Low' }
+    if (confidence >= 0.7) return { bg: 'bg-green-500', text: 'text-green-600', label: 'High' }
+    if (confidence >= 0.4) return { bg: 'bg-amber-500', text: 'text-amber-600', label: 'Medium' }
+    return { bg: 'bg-red-500', text: 'text-red-600', label: 'Low' }
   }
   
   const { bg, text, label } = getColor()
@@ -40,7 +37,7 @@ function ConfidenceIndicator({ confidence }: { confidence: number }) {
               key={i}
               className={`w-2 h-4 rounded-sm ${
                 status === 'fill' ? bg : 
-                status === 'half' ? `${bg}/50` : 'bg-slate-700'
+                status === 'half' ? `${bg}/50` : 'bg-slate-200'
               }`}
             />
           )
@@ -96,12 +93,12 @@ export default function PatchPage() {
         className="mb-6"
       >
         <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 bg-purple-500/20 rounded-lg">
-            <Wand2 className="w-5 h-5 text-purple-400" />
+          <div className="p-2 bg-black rounded-lg">
+            <Wand2 className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Patch Proposal</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Patch Proposal</h1>
         </div>
-        <p className="text-slate-400 text-sm ml-1">Generate AI-powered code patches for issues and bugs</p>
+        <p className="text-slate-500 text-sm ml-1">Generate AI-powered code patches for issues and bugs</p>
       </motion.div>
 
       {/* Form */}
@@ -109,7 +106,7 @@ export default function PatchPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5 mb-6 space-y-4"
+        className="bg-white border border-slate-200 rounded-xl p-5 mb-6 space-y-4"
       >
         <div>
           <label className="label flex items-center gap-2">
@@ -117,10 +114,10 @@ export default function PatchPage() {
             Repository
           </label>
           {repoLoadError ? (
-            <div className="flex items-center gap-3 p-3 bg-rose-900/20 border border-rose-700/30 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-              <span className="text-sm text-rose-300">{repoLoadError}</span>
-              <button onClick={loadRepos} className="ml-auto text-sm text-indigo-400 hover:text-indigo-300">Retry</button>
+            <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-red-700">{repoLoadError}</span>
+              <button onClick={loadRepos} className="ml-auto text-sm text-black hover:text-slate-700">Retry</button>
             </div>
           ) : (
             <select
@@ -167,7 +164,7 @@ export default function PatchPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="bg-rose-900/20 border border-rose-700/30 text-rose-300 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2"
             >
               <AlertCircle className="w-4 h-4" />
               {error}
@@ -204,13 +201,13 @@ export default function PatchPage() {
           >
             {/* Meta info */}
             <div className="flex flex-wrap items-center gap-4">
-              <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg px-4 py-2.5 flex items-center gap-2">
-<GitPullRequest className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-400">Target: </span>
-                <span className="font-mono text-sm text-indigo-300">{result.target_file || 'unknown'}</span>
+              <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex items-center gap-2">
+                <GitPullRequest className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-500">Target: </span>
+                <span className="font-mono text-sm text-black">{result.target_file || 'unknown'}</span>
               </div>
-              <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg px-4 py-2.5 flex items-center gap-3">
-                <span className="text-sm text-slate-400">Confidence: </span>
+              <div className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex items-center gap-3">
+                <span className="text-sm text-slate-500">Confidence: </span>
                 <ConfidenceIndicator confidence={result.confidence} />
               </div>
             </div>
@@ -218,8 +215,8 @@ export default function PatchPage() {
             {/* Diff */}
             {result.raw_diff && (
               <div>
-                <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-<GitPullRequest className="w-4 h-4 text-purple-400" />
+                <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <GitPullRequest className="w-4 h-4 text-slate-600" />
                   Diff
                 </h2>
                 <DiffViewer diff={result.raw_diff} filename={result.target_file} />
@@ -228,20 +225,20 @@ export default function PatchPage() {
 
             {/* Explanation */}
             {result.explanation && (
-              <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-4">
-                <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-amber-400" />
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-amber-500" />
                   Explanation
                 </h2>
-                <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{result.explanation}</p>
+                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{result.explanation}</p>
               </div>
             )}
 
             {/* Unit Test */}
             {result.unit_test && (
               <div>
-                <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                  <TestTube className="w-4 h-4 text-emerald-400" />
+                <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <TestTube className="w-4 h-4 text-green-600" />
                   Suggested Unit Test
                 </h2>
                 <CodeBlock code={result.unit_test} language="python" showLineNumbers={false} />

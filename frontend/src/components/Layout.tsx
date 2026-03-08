@@ -7,7 +7,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+    <div className="flex min-h-screen bg-white text-slate-900">
       <Navbar />
       <main className="flex-1 overflow-auto p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
